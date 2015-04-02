@@ -13,10 +13,10 @@ name:                HLINQ
 version:             0.1.0.0
 
 -- A short (one-line) description of the package.
-synopsis:            HLINQ is a port of P-LINQ system from Cheney et al. 2013 to Haskell programming language. It supports query composition, dynamic generation of queries and abstracting over values.
+synopsis:            The HLINQ package
 
 -- A longer description of the package.
--- description:         
+description:         HLINQ is a port of P-LINQ system from Cheney et al. 2013 to Haskell programming language. It supports query composition, dynamic generation of queries and abstracting over values.         
 
 -- The license under which the package is released.
 license:             MIT
@@ -45,6 +45,11 @@ extra-source-files: examples/Examples.hs, examples/sql/1.sql, examples/sql/2.sql
 -- Constraint on the version of Cabal needed to build this package.
 cabal-version:       >=1.10
 
+tested-with:         GHC == 7.8.3
+
+source-repository head
+  type: git
+  location: git@github.com:juventietis/HLINQ.git
 
 library
   -- Modules exported by the library.
