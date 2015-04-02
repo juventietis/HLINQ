@@ -8,7 +8,6 @@ import Database.HDBC
 import Control.Monad	
 import Data.List (intercalate)
 import Data.Maybe
-import Data.Convertible
 import Data.String.Unicode
 import Data.Decimal
 import Data.Int

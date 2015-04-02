@@ -1,5 +1,5 @@
 module Constructor where
-import Debug.Trace
+
 -- Change approach to the one using SQL parameters.
 data ValueExpr = StringLit String
 	| NumLit Integer

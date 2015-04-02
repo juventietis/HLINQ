@@ -1,15 +1,12 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Deconstructor where
 import Control.Monad
-import Language.Haskell.Meta.Parse
-import Language.Haskell.Meta.Utils
 import Language.Haskell.TH.Syntax
 import Language.Haskell.TH
-import Language.Haskell.TH.Quote
 import Data.List(partition)
 import Constructor
 import System.IO.Unsafe
-import Debug.Trace
+
 
 deconstruct' :: Either String Exp -> [Stmt]
 deconstruct' (Right (DoE exps)) = exps
