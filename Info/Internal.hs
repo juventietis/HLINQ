@@ -11,12 +11,16 @@ import Data.Maybe
 import Data.String.Unicode
 import Data.Decimal
 import Data.Int
+import Data.Hashable
 import System.IO.Unsafe
 import Deconstructor
 import Constructor
 import Utilities
+import Debug.Trace
 
 data DBInfo = DBInfo {info :: [(String, [(String, String)])]} deriving(Eq, Show)
+
+-- instance Hashable DBInfo 
 
 getDBInfo :: String -> IO [(String, [(String, SqlTypeId)])]
 getDBInfo dbPath = do
@@ -60,9 +64,16 @@ extractTableNames [] = []
 
 
 createDBInstance :: String -> [String] -> Q Dec
-createDBInstance dbName fieldNames = return $ ValD (VarP name) (NormalB (AppE (AppE cons (ListE [])) (ListE []))) [] where
+createDBInstance dbName fieldNames = return $ ValD (VarP name) (NormalB body) [] where
 	name = mkName dbName
 	cons = ConE $ mkName $ toTitleCase dbName
+	body = mkBody cons fieldNames
+
+
+mkBody :: Exp -> [String] -> Exp
+mkBody cons [] = error "Database has no tables"
+mkBody cons [x] = (AppE cons (ListE []))
+mkBody cons (x : xs) = (AppE (mkBody cons xs) (ListE []))
 
 createDBRecord :: String -> [String] -> Q Dec
 createDBRecord dbName tableNames = return $ DataD context name vars cons derives where
@@ -122,6 +133,19 @@ createTableInfoColumn (name, typ) = TupE [LitE (StringL name), LitE (StringL (sh
 mkTableField :: (String, SqlTypeId) -> VarStrictType
 mkTableField (name, typ) = (mkName name, NotStrict, ConT $ convType typ)::VarStrictType
 
+
+createTableInfos :: [(String, [(String, SqlTypeId)])] -> [(String, [(String, String)])]
+createTableInfos xs = map createTableInfo xs
+
+createTableInfo :: (String, [(String, SqlTypeId)]) -> (String, [(String, String)])
+createTableInfo (tableName, xs) = (tableName, createColumnInfos xs)
+
+createColumnInfos :: [(String, SqlTypeId)] -> [(String, String)]
+createColumnInfos xs = map createColumnInfo xs
+
+createColumnInfo :: (String, SqlTypeId) -> (String, String)
+createColumnInfo (name, typ) = (name, convTypeString typ) 
+
 convType :: SqlTypeId -> Name
 convType typ = case typ of
 				SqlCharT -> ''Char
@@ -138,6 +162,24 @@ convType typ = case typ of
 				SqlFloatT -> ''Float
 				SqlDoubleT -> ''Double
 
+convTypeString :: SqlTypeId -> String
+convTypeString typ = showName $ convType typ
+
+	-- case typ of
+	-- 			SqlCharT -> "GHC.Base.Char"
+	-- 			SqlVarCharT -> "GHC.Base.String"
+	-- 			SqlLongVarCharT -> "GHC.Base.String"
+	-- 			-- SqlWCharT -> ''Unicode
+	-- 			-- SqlWVarCharT -> ''UString
+	-- 			-- SqlWLongVarCharT -> ''UString
+	-- 			-- SqlDecimalT -> ''Decimal
+	-- 			SqlNumericT -> "GHC.Base.Integer"
+	-- 			SqlSmallIntT -> "GHC.Base.Int16"
+	-- 			SqlIntegerT -> "GHC.Types.Int"
+	-- 			SqlBigIntT -> "GHC.Base.Int64"
+	-- 			SqlFloatT -> "GHC.Types.Float"
+	-- 			SqlDoubleT -> "GHC.Types.Double"
+
 -- defFromDB :: String -> String -> Q Dec
 -- defFromDB dbName  dbPath = return $ FunD (mkName $ "from" ++ (toTitleCase dbName)) [Clause [VarP query] (NormalB (DoE [connS, letS, letValS, statS, returnS])) []] where
 -- 	connS = BindS (VarP $ mkName "conn") (AppE (VarE 'connectSqlite3) (LitE (StringL dbPath)))
@@ -148,8 +190,8 @@ convType typ = case typ of
 -- 	returnS = NoBindS (AppE (AppE (AppE (VarE 'execute) (VarE $ mkName "conn")) (AppE (VarE 'show) (VarE $ mkName "convQuery"))) (VarE $ mkName "getVals"))
 -- 	query = mkName "query"
 
-defFromDB :: String -> String -> Q Dec
-defFromDB dbName  dbPath = return $ FunD (mkName $ "from" ++ (toTitleCase dbName)) [Clause [VarP query] (NormalB (DoE [connS, letS, letValS, statS, execS, returnS])) []] where
+defFromDBUntyped :: String -> String -> Q Dec
+defFromDBUntyped dbName  dbPath = return $ FunD (mkName $ "from" ++ (toTitleCase dbName) ++ "Untyped") [Clause [VarP query] (NormalB (DoE [connS, letS, letValS, statS, execS, returnS])) []] where
 	connS = BindS (VarP $ mkName "conn") (AppE (VarE 'connectSqlite3) (LitE (StringL dbPath)))
 	letS = LetS [ValD (VarP $ mkName "convQuery") (NormalB (AppE (VarE 'expQToSQL) (VarE query))) []]
 	letValS = LetS [ValD (VarP $ mkName "getVals") (NormalB (AppE (VarE 'toSQLVals) (AppE (VarE 'getQueryParameters) (VarE $ mkName "convQuery")))) []]
@@ -159,8 +201,8 @@ defFromDB dbName  dbPath = return $ FunD (mkName $ "from" ++ (toTitleCase dbName
 	returnS = NoBindS (AppE (VarE 'fetchAllRowsMap') (VarE $ mkName "stat"))
 	query = mkName "query"
 
-defFromDBTyped :: String -> String -> Q Dec
-defFromDBTyped dbName  dbPath = return $ FunD (mkName $ "from" ++ (toTitleCase dbName) ++ "Typed") [Clause [VarP query] (NormalB (DoE [connS, letS, letValS, returnS])) []] where
+defFromDB :: String -> String -> Q Dec
+defFromDB dbName  dbPath = return $ FunD (mkName $ "from" ++ (toTitleCase dbName)) [Clause [VarP query] (NormalB (DoE [connS, letS, letValS, returnS])) []] where
 	connS = BindS (VarP $ mkName "conn") (AppE (VarE 'connectSqlite3) (LitE (StringL dbPath)))
 	letS = LetS [ValD (VarP $ mkName "convQuery") (NormalB (AppE (VarE 'expQToSQL) (AppE (VarE 'unTypeQ) (VarE query)))) []]
 	letValS = LetS [ValD (VarP $ mkName "getVals") (NormalB (AppE (VarE 'toSQLVals) (AppE (VarE 'getQueryParameters) (VarE $ mkName "convQuery")))) []]
