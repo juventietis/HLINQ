@@ -16,7 +16,7 @@ import System.IO.Unsafe
 import Deconstructor
 import Constructor
 import Utilities
-import Debug.Trace
+
 
 data DBInfo = DBInfo {info :: [(String, [(String, String)])]} deriving(Eq, Show)
 
@@ -198,16 +198,18 @@ defFromDBUntyped dbName  dbPath = return $ FunD (mkName $ "from" ++ (toTitleCase
 	--printS = NoBindS (AppE (VarE 'runIO) (AppE (VarE 'print) (VarE $ mkName "query")))
 	statS = BindS (VarP $ mkName "stat") (AppE (AppE (VarE 'prepare) (VarE $ mkName "conn")) ((AppE (VarE 'show) (VarE $ mkName "convQuery"))))
 	execS = NoBindS (AppE (AppE (VarE 'execute) (VarE $ mkName "stat")) (VarE $ mkName "getVals"))
-	returnS = NoBindS (AppE (VarE 'fetchAllRowsMap') (VarE $ mkName "stat"))
+	returnS = NoBindS (AppE (VarE 'fetchAllRowsAL') (VarE $ mkName "stat"))
 	query = mkName "query"
 
 defFromDB :: String -> String -> Q Dec
-defFromDB dbName  dbPath = return $ FunD (mkName $ "from" ++ (toTitleCase dbName)) [Clause [VarP query] (NormalB (DoE [connS, letS, letValS, returnS])) []] where
+defFromDB dbName  dbPath = return $ FunD (mkName $ "from" ++ (toTitleCase dbName)) [Clause [VarP query] (NormalB (DoE [connS, letS, letValS, statS, execS, returnS])) []] where
 	connS = BindS (VarP $ mkName "conn") (AppE (VarE 'connectSqlite3) (LitE (StringL dbPath)))
 	letS = LetS [ValD (VarP $ mkName "convQuery") (NormalB (AppE (VarE 'expQToSQL) (AppE (VarE 'unTypeQ) (VarE query)))) []]
 	letValS = LetS [ValD (VarP $ mkName "getVals") (NormalB (AppE (VarE 'toSQLVals) (AppE (VarE 'getQueryParameters) (VarE $ mkName "convQuery")))) []]
 	--printS = NoBindS (AppE (VarE 'runIO) (AppE (VarE 'print) (VarE $ mkName "query")))
-	returnS = NoBindS (AppE (AppE (AppE (VarE 'quickQuery) (VarE $ mkName "conn")) (AppE (VarE 'show) (VarE $ mkName "convQuery"))) (VarE $ mkName "getVals"))
+	statS = BindS (VarP $ mkName "stat") (AppE (AppE (VarE 'prepare) (VarE $ mkName "conn")) ((AppE (VarE 'show) (VarE $ mkName "convQuery"))))
+	execS = NoBindS (AppE (AppE (VarE 'execute) (VarE $ mkName "stat")) (VarE $ mkName "getVals"))
+	returnS = NoBindS (AppE (VarE 'fetchAllRowsAL') (VarE $ mkName "stat"))
 	query = mkName "query"
 
 --defFromDB' :: String -> String -> Q Dec
