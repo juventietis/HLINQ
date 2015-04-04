@@ -1,11 +1,11 @@
 {-# LANGUAGE TemplateHaskell #-}
-module Info (createDB, DBInfo (DBInfo), info, checkDbHash', checkDbHash, expQToSQL) where
+module Info (createDB, DBInfo (DBInfo), info, checkDbHash', checkDbHash, expQToSQL, tExpQToSQL) where
 
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 import Data.Hashable
 import System.IO.Unsafe
-import Deconstructor(expQToSQL)
+import Deconstructor(expQToSQL, tExpQToSQL)
 import Info.Internal
 
 

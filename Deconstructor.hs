@@ -223,18 +223,26 @@ expToString (DoE stmt) = toString stmt
 expToString _ = error "Unimplemented syntax"
 
 expQToSQL :: ExpQ -> QueryExpr
-expQToSQL exp = unsafePerformIO . runQ . fmap expToSQL $  normalised where 
+expQToSQL exp = unsafePerformIO . runQ . fmap expToSQL $ normalised where 
 					normalised = normalise exp
+
+tExpQToSQL :: Q (TExp a) -> QueryExpr
+tExpQToSQL exp = unsafePerformIO . runQ . fmap expToSQL $ normalised where 
+					normalised = normalise $ unTypeQ exp
 
 expToSQL :: Exp -> QueryExpr
 expToSQL (DoE stmt) = Select {
 	qeSelectList = map (\x -> (x, Nothing)) $ returnStatements stmt,
 	qeFrom = bindStatements stmt,
-	qeWhere = (Just $ head (guardStatements stmt)),
+	qeWhere = whereS,
 	qeGroupBy = [],
 	qeHaving = Nothing,
 	qeOrderBy = []
-}
+} where
+	guardS = (guardStatements stmt)
+	whereS = case length guardS of
+				  0 -> Nothing
+				  otherwise -> Just $ head guardS
 expToSQL _ = error "Unimplemented syntax"
 
 expQToExpr :: ExpQ -> [ValueExpr]
