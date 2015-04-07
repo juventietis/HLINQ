@@ -4,6 +4,7 @@ module Info.Internal where
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 import Database.HDBC.Sqlite3 (connectSqlite3)
+import Database.HDBC.PostgreSQL (connectPostgreSQL)
 import Database.HDBC
 import Control.Monad	
 import Data.List (intercalate)
@@ -165,62 +166,47 @@ convType typ = case typ of
 convTypeString :: SqlTypeId -> String
 convTypeString typ = showName $ convType typ
 
-	-- case typ of
-	-- 			SqlCharT -> "GHC.Base.Char"
-	-- 			SqlVarCharT -> "GHC.Base.String"
-	-- 			SqlLongVarCharT -> "GHC.Base.String"
-	-- 			-- SqlWCharT -> ''Unicode
-	-- 			-- SqlWVarCharT -> ''UString
-	-- 			-- SqlWLongVarCharT -> ''UString
-	-- 			-- SqlDecimalT -> ''Decimal
-	-- 			SqlNumericT -> "GHC.Base.Integer"
-	-- 			SqlSmallIntT -> "GHC.Base.Int16"
-	-- 			SqlIntegerT -> "GHC.Types.Int"
-	-- 			SqlBigIntT -> "GHC.Base.Int64"
-	-- 			SqlFloatT -> "GHC.Types.Float"
-	-- 			SqlDoubleT -> "GHC.Types.Double"
-
--- defFromDB :: String -> String -> Q Dec
--- defFromDB dbName  dbPath = return $ FunD (mkName $ "from" ++ (toTitleCase dbName)) [Clause [VarP query] (NormalB (DoE [connS, letS, letValS, statS, returnS])) []] where
--- 	connS = BindS (VarP $ mkName "conn") (AppE (VarE 'connectSqlite3) (LitE (StringL dbPath)))
--- 	letS = LetS [ValD (VarP $ mkName "convQuery") (NormalB (AppE (VarE 'expQToSQL) (VarE query))) []]
--- 	letValS = LetS [ValD (VarP $ mkName "getVals") (NormalB (AppE (VarE 'toSQLVals) (AppE (VarE 'getQueryParameters) (VarE $ mkName "convQuery")))) []]
--- 	--printS = NoBindS (AppE (VarE 'runIO) (AppE (VarE 'print) (VarE $ mkName "query")))
--- 	statS = BindS (VarP $ mkName "stat") (AppE (AppE (VarE 'prepare) (VarE $ mkName "conn")) ((AppE (VarE 'show) (VarE $ mkName "convQuery"))))
--- 	returnS = NoBindS (AppE (AppE (AppE (VarE 'execute) (VarE $ mkName "conn")) (AppE (VarE 'show) (VarE $ mkName "convQuery"))) (VarE $ mkName "getVals"))
--- 	query = mkName "query"
-
 defFromDBUntyped :: String -> String -> Q Dec
-defFromDBUntyped dbName  dbPath = return $ FunD (mkName $ "from" ++ (toTitleCase dbName) ++ "Untyped") [Clause [VarP query] (NormalB (DoE [connS, letS, letValS, statS, execS, returnS])) []] where
-	connS = BindS (VarP $ mkName "conn") (AppE (VarE 'connectSqlite3) (LitE (StringL dbPath)))
+defFromDBUntyped dbName  dbPath = return $ FunD (mkName $ "from" ++ (toTitleCase dbName) ++ "Untyped") [Clause [VarP query] (NormalB (DoE [connS, letS, letValS, statS, execS, bindResS, discS, returnS])) []] where
+	-- Connects to the database
+	connS = BindS (VarP $ mkName "conn") (AppE (VarE 'connectPostgreSQL) (LitE (StringL "")))
+	--connS = BindS (VarP $ mkName "conn") (AppE (VarE 'connectSqlite3) (LitE (StringL dbPath)))
+	-- Converts the query from type TExpQ to QueryExpr, which can be easily converted to a string
 	letS = LetS [ValD (VarP $ mkName "convQuery") (NormalB (AppE (VarE 'expQToSQL) (VarE query))) []]
+	-- Knocks out values from the statement so that they could be used in the preparation of the statement
 	letValS = LetS [ValD (VarP $ mkName "getVals") (NormalB (AppE (VarE 'toSQLVals) (AppE (VarE 'getQueryParameters) (VarE $ mkName "convQuery")))) []]
-	--printS = NoBindS (AppE (VarE 'runIO) (AppE (VarE 'print) (VarE $ mkName "query")))
+	-- Prepares a statement for execution on the db
 	statS = BindS (VarP $ mkName "stat") (AppE (AppE (VarE 'prepare) (VarE $ mkName "conn")) ((AppE (VarE 'show) (VarE $ mkName "convQuery"))))
+	-- Executes the prepared statement "stat" on the db.
 	execS = NoBindS (AppE (AppE (VarE 'execute) (VarE $ mkName "stat")) (VarE $ mkName "getVals"))
-	returnS = NoBindS (AppE (VarE 'fetchAllRowsAL') (VarE $ mkName "stat"))
+	-- Fetches results from db and binds them to "results", necessary so that the connection does not disconnect until the results are pulled.
+	bindResS = BindS (VarP $ mkName "results") (AppE (VarE 'fetchAllRows') (VarE $ mkName "stat")) 
+	-- Disconnects from the database
+	discS = NoBindS (AppE (VarE 'disconnect) (VarE $ mkName "conn"))
+	-- Necessary so that the connection does not disconnect until the results are pulled.
+	returnS = NoBindS (AppE (VarE 'return) (VarE $ mkName "results"))
 	query = mkName "query"
 
 defFromDB :: String -> String -> Q Dec
-defFromDB dbName  dbPath = return $ FunD (mkName $ "from" ++ (toTitleCase dbName)) [Clause [VarP query] (NormalB (DoE [connS, letS, letValS, statS, execS, returnS])) []] where
-	connS = BindS (VarP $ mkName "conn") (AppE (VarE 'connectSqlite3) (LitE (StringL dbPath)))
+defFromDB dbName  dbPath = return $ FunD (mkName $ "from" ++ (toTitleCase dbName)) [Clause [VarP query] (NormalB (DoE [connS, letS, letValS, statS, execS, bindResS, discS, returnS])) []] where
+	-- Connects to the database
+	connS = BindS (VarP $ mkName "conn") (AppE (VarE 'connectPostgreSQL) (LitE (StringL "")))
+	--connS = BindS (VarP $ mkName "conn") (AppE (VarE 'connectSqlite3) (LitE (StringL dbPath)))
+	-- Converts the query from type TExpQ to QueryExpr, which can be easily converted to a string
 	letS = LetS [ValD (VarP $ mkName "convQuery") (NormalB (AppE (VarE 'expQToSQL) (AppE (VarE 'unTypeQ) (VarE query)))) []]
+	-- Knocks out values from the statement so that they could be used in the preparation of the statement
 	letValS = LetS [ValD (VarP $ mkName "getVals") (NormalB (AppE (VarE 'toSQLVals) (AppE (VarE 'getQueryParameters) (VarE $ mkName "convQuery")))) []]
-	--printS = NoBindS (AppE (VarE 'runIO) (AppE (VarE 'print) (VarE $ mkName "query")))
+	-- Prepares a statement for execution on the db
 	statS = BindS (VarP $ mkName "stat") (AppE (AppE (VarE 'prepare) (VarE $ mkName "conn")) ((AppE (VarE 'show) (VarE $ mkName "convQuery"))))
+	-- Executes the prepared statement "stat" on the db.
 	execS = NoBindS (AppE (AppE (VarE 'execute) (VarE $ mkName "stat")) (VarE $ mkName "getVals"))
-	returnS = NoBindS (AppE (VarE 'fetchAllRowsAL') (VarE $ mkName "stat"))
+	-- Fetches results from db and binds them to "results", necessary so that the connection does not disconnect until the results are pulled.
+	bindResS = BindS (VarP $ mkName "results") (AppE (VarE 'fetchAllRows') (VarE $ mkName "stat")) 
+	-- Disconnects from the database
+	discS = NoBindS (AppE (VarE 'disconnect) (VarE $ mkName "conn"))
+	-- Necessary so that the connection does not disconnect until the results are pulled.
+	returnS = NoBindS (AppE (VarE 'return) (VarE $ mkName "results"))
 	query = mkName "query"
-
---defFromDB' :: String -> String -> Q Dec
---defFromDB' dbName  dbPath = return $ FunD (mkName $ "from" ++ (toTitleCase dbName) ++ "'") [Clause [VarP query] (NormalB (DoE [connS, letS, letValS, returnS])) []] where
---	connS = BindS (VarP $ mkName "conn") (AppE (VarE 'connectSqlite3) (LitE (StringL dbPath)))
---	letS = LetS [ValD (VarP $ mkName "convQuery") (NormalB (AppE (VarE 'expQToSQL) (VarE query))) []]
---	letValS = LetS [ValD (VarP $ mkName "getVals") (NormalB (AppE (VarE 'toSQLVals) (AppE (VarE 'getQueryParameters) (VarE $ mkName "convQuery")))) []]
---	--printS = NoBindS (AppE (VarE 'runIO) (AppE (VarE 'print) (VarE $ mkName "query")))
---	letResults = LetS [ValD (Varp $ mkName "results") (NormalB (AppE (AppE (AppE (VarE 'quickQuery) (VarE $ mkName "conn")) (AppE (VarE 'show) (VarE $ mkName "convQuery"))) (VarE $ mkName "getVals"))) []]
---	returnS = NoBindS (AppE (VarE 'return) (VarE )
---	query = mkName "query"
 
 toSQLVals :: [ValueExpr] -> [SqlValue]
 toSQLVals vals = map toSQLVal vals
