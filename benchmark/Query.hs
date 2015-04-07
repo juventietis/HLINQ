@@ -8,12 +8,17 @@ import Database.HaskellDB.HDBRec
 import Database.HaskellDB.HDBC
 import Database.HaskellDB.Sql.SQLite
 import Database.HaskellDB.HDBC.SQLite3
+import Database.HaskellDB.HDBC.PostgreSQL
 import Database.HaskellDB.Database
 import Database.HaskellDB.PrintQuery
 import Database.HDBC.Sqlite3 (connectSqlite3)
+import Database.HDBC.PostgreSQL (connectPostgreSQL)
+
+--withDB :: (Database -> IO a) -> IO a
+--withDB = sqliteConnect "test.db"
 
 withDB :: (Database -> IO a) -> IO a
-withDB = sqliteConnect "test.db"
+withDB = postgresqlConnect []
 
 
 simpleSelection = do
