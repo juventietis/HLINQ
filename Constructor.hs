@@ -95,7 +95,7 @@ data TableRef = TRSimple String
 	deriving (Eq)
 instance Show TableRef where
 	show (TRSimple s) = s
-	show (TRAlias ref s)  = show ref ++ " as " ++ s 
+	show (TRAlias ref s)  = show ref ++ " AS " ++ s 
 
 data JoinType = JoinInner | JoinLeft | JoinRight | JoinFull | JoinCross
 	deriving (Eq,Show)
