@@ -45,3 +45,8 @@ toTup7 vals = map (\x -> (fromSql $ x!!0, fromSql $ x!!1, fromSql $ x!!2, fromSq
 toTup8 vals = map (\x -> (fromSql $ x!!0, fromSql $ x!!1, fromSql $ x!!2, fromSql $ x!!3, fromSql $ x!!4, fromSql $ x!!5, fromSql $ x!!6, fromSql $ x!!7)) vals
 toTup9 vals = map (\x -> (fromSql $ x!!0, fromSql $ x!!1, fromSql $ x!!2, fromSql $ x!!3, fromSql $ x!!4, fromSql $ x!!5, fromSql $ x!!6, fromSql $ x!!7, fromSql $ x!!8)) vals
 toTup10 vals = map (\x -> (fromSql $ x!!0, fromSql $ x!!1, fromSql $ x!!2, fromSql $ x!!3, fromSql $ x!!4, fromSql $ x!!5, fromSql $ x!!6, fromSql $ x!!7, fromSql $ x!!8, fromSql $ x!!9)) vals
+
+toList valsIO = do
+	vals <- valsIO
+	let conv = map (\x -> fromSql $ x!! 0) vals
+	return conv
