@@ -62,7 +62,7 @@ library
   other-extensions:    TemplateHaskell
   
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.7 && <4.8, template-haskell >=2.9 && <2.10, HDBC-sqlite3 >=2.3 && <2.4, HDBC >=2.4 && <2.5, old-time >=1.1 && <1.2, hxt-unicode >=9.0 && <9.1, Decimal >=0.4 && <0.5, HDBC-postgresql >= 2, convertible >= 1, hashable >= 1, HDBC-postgresql >= 2.3
+  build-depends:       base >=4.7 && <4.8, template-haskell >=2.9 && <2.10, HDBC-sqlite3 >=2.3 && <2.4, HDBC >=2.4 && <2.5, HDBC-postgresql >= 2, convertible >= 1, hashable >= 1, HDBC-postgresql >= 2.3
   
   -- Directories containing source files.
   -- hs-source-dirs:      
@@ -81,7 +81,7 @@ test-suite test
   main-is:
     test.hs
   build-depends:
-      base >= 4 && < 5, tasty >= 0.7, tasty-hunit >= 0.9, HDBC >= 2.4, hxt-unicode >= 9, Decimal >= 0.4, HLINQ
+      base >= 4 && < 5, tasty >= 0.7, tasty-hunit >= 0.9, HDBC >= 2.4, HLINQ, random >= 1.1, HDBC-sqlite3 >= 2.3
 
 benchmark criterion
     build-depends:    base, HLINQ, criterion >= 1, template-haskell >=2.9 && <2.10, haskelldb >= 2.2, HDBC-sqlite3 >= 2.3, haskelldb-hdbc >= 2.2, haskelldb-hdbc-sqlite3 > 2.1, haskelldb-hdbc-postgresql >= 2, hashable >= 1, HDBC-postgresql >= 2.3

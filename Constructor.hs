@@ -1,5 +1,5 @@
 module Constructor where
-
+-- Add reference
 -- Change approach to the one using SQL parameters.
 data ValueExpr = StringLit String
 	| NumLit Integer
@@ -15,6 +15,7 @@ data ValueExpr = StringLit String
 		[(ValueExpr,ValueExpr)] -- when branches
 		(Maybe ValueExpr) -- else value
 	| Parens ValueExpr
+	| Exists QueryExpr
 	| Union ValueExpr ValueExpr deriving(Eq)
 instance Show ValueExpr where
 	show (Iden s) = s
@@ -25,6 +26,7 @@ instance Show ValueExpr where
 	show (Parens exp) = "(" ++ show exp ++ ")"
 	show (NumLit val) = show val
 	show (StringLit val) = val
+	show (Exists q) = "EXISTS (" ++ show q ++ ")"
 
 
 getQueryParameters :: QueryExpr -> [ValueExpr]
@@ -54,6 +56,10 @@ knockOutValsWhere (BinOp exp1 string exp2)
 knockOutValsWhere exp@(DIden _ _) = exp 
 knockOutValsWhere exp@(NumLit val) = StringLit "(?)"
 knockOutValsWhere exp@(StringLit val) = StringLit "(?)"
+knockOutValsWhere (Exists query) = Exists q where
+ 	q = case (qeWhere query) of
+ 			   Just exp -> (query {qeWhere = Just (knockOutValsWhere exp)})
+ 			   otherwise -> (query {qeWhere = Nothing})
 
 hsBinOpStr :: [String]
 hsBinOpStr = ["=", "<", ">", "<=", ">=", "/="]

@@ -1,11 +1,12 @@
 import Test.Tasty
 import Test.Tasty.HUnit
-import InfoTest
+import InfoTest(infoUnitTests)
+import InfoInternalTest(infoInternalUnitTests)
 
 main = defaultMain tests
 
 tests :: TestTree
-tests = testGroup "Tests" [infoUnitTests]
+tests = testGroup "Tests" [infoUnitTests, infoInternalUnitTests]
 
 unitTests = testGroup "Unit tests"
   [ testCase "List comparison (different length)" $

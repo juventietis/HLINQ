@@ -50,7 +50,7 @@ restrictEdna = withDB $ \db -> query db simpleRestriction
 
 simpleRestriction = do
   people <- table T.people
-  restrict $ people!F.name .==. constant "Edna"
+  restrict $ people!F.name .==. constant "Edna or 1=1"
   return people          
 
 range lb ub = withDB $ (\db -> query db (rangeInner lb ub))  

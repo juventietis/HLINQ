@@ -9,11 +9,8 @@ import Database.HDBC
 import Control.Monad	
 import Data.List (intercalate)
 import Data.Maybe
-import Data.String.Unicode
-import Data.Decimal
 import Data.Int
 import Data.Hashable
-import System.IO.Unsafe
 import Deconstructor
 import Constructor
 import Utilities
@@ -21,13 +18,14 @@ import Utilities
 
 data DBInfo = DBInfo {info :: [(String, [(String, String)])]} deriving(Eq, Show)
 
--- instance Hashable DBInfo 
-
+-- Connects to the database, extracts and summaries table descriptions.
 getDBInfo :: String -> IO [(String, [(String, SqlTypeId)])]
 getDBInfo dbPath = do
-	conn <- connectSqlite3 dbPath
+	--conn <- connectSqlite3 dbPath
+	conn <- connectPostgreSQL ""
 	tables <- getTables conn
 	descriptions <- mapM (describeTable conn) tables
+	disconnect conn
 	return $ describeDatabase tables $ getDatabaseTypes descriptions
 
 getColumnType :: (String, SqlColDesc) -> (String, SqlTypeId)
@@ -42,6 +40,11 @@ getDatabaseTypes database = map getColumnTypes database
 describeDatabase :: [String] -> [[(String, SqlTypeId)]] -> [(String, [(String, SqlTypeId)])]
 describeDatabase tables types = zip tables types
 
+
+extractTableNames :: [(String, [(String, SqlTypeId)])] -> [String]
+extractTableNames (x:xs) = fst x : extractTableNames xs
+extractTableNames [] = []
+
 -- How should the db data structure look?
 -- In the paper for F# it is:
 -- type DB = {people :{name:String, age:Int} list,
@@ -55,14 +58,15 @@ describeDatabase tables types = zip tables types
 
 -- DB term necessary to allow multiple databases to be used by a single function.
 
-extractTableNames :: [(String, [(String, SqlTypeId)])] -> [String]
-extractTableNames (x:xs) = fst x : extractTableNames xs
-extractTableNames [] = []
 
--- Given the path to the database creates a datatype
--- in the form of Db [Table]*
--- and an instance of this type by the which was given to it.
-
+createDBRecord :: String -> [String] -> Q Dec
+createDBRecord dbName tableNames = return $ DataD context name vars cons derives where
+	context = []
+	name = mkName $ toTitleCase dbName
+	vars = []
+	cons = [RecC name fields]
+	fields = createFields tableNames mkDBField
+	derives = [''Show]
 
 createDBInstance :: String -> [String] -> Q Dec
 createDBInstance dbName fieldNames = return $ ValD (VarP name) (NormalB body) [] where
@@ -76,14 +80,9 @@ mkBody cons [] = error "Database has no tables"
 mkBody cons [x] = (AppE cons (ListE []))
 mkBody cons (x : xs) = (AppE (mkBody cons xs) (ListE []))
 
-createDBRecord :: String -> [String] -> Q Dec
-createDBRecord dbName tableNames = return $ DataD context name vars cons derives where
-	context = []
-	name = mkName $ toTitleCase dbName
-	vars = []
-	cons = [RecC name fields]
-	fields = createFields tableNames mkDBField
-	derives = [''Show]
+-- Given the path to the database creates a datatype
+-- in the form of Db [Table]*
+-- and an instance of this type by the which was given to it.
 
 mkDBField :: String -> VarStrictType
 mkDBField name = (mkName name, NotStrict, AppT ListT $ ConT $ mkName $ toTitleCase name)::VarStrictType
@@ -152,16 +151,11 @@ convType typ = case typ of
 				SqlCharT -> ''Char
 				SqlVarCharT -> ''String
 				SqlLongVarCharT -> ''String
-				SqlWCharT -> ''Unicode
-				SqlWVarCharT -> ''UString
-				SqlWLongVarCharT -> ''UString
-				SqlDecimalT -> ''Decimal
 				SqlNumericT -> ''Integer
-				SqlSmallIntT -> ''Int16 
 				SqlIntegerT -> ''Int
-				SqlBigIntT -> ''Int64
-				SqlFloatT -> ''Float
-				SqlDoubleT -> ''Double
+				SqlBigIntT -> ''Int
+				otherwise -> error "Unrecognized column type"
+
 
 convTypeString :: SqlTypeId -> String
 convTypeString typ = showName $ convType typ

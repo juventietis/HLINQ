@@ -6,6 +6,7 @@ import Control.Monad
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 import Data.Hashable
+import Database.HDBC.PostgreSQL (connectPostgreSQL)
 
 --import Temp
 createDB "test.db" "test"

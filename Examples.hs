@@ -5,16 +5,28 @@ import Utilities
 import Control.Monad
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
+import Data.Hashable
+import Data.List(null)
 
+import Temp
+-- createDB "test.db" "test"
 
-createDB "test.db" "test"
+--main = do
+--	-- checkDBConsistency
+--	x <- checkDBConsistency'
+--	case x of 
+--		(Right _) -> do 
+--			let results = fromTest [||$$differencesT||]
+--			print results
+--		(Left err) -> do error err
+--createDB "" ""
 
 range'' lb ub = [|do
 	person <- people
 	guard $ lb <= (age person) && (age person) < ub  
 	return $ (name person)|]
 
-range' lb ub = fromTest [|do
+range' lb ub = fromTestUntyped [|do
 	person <- people
 	guard $ lb <= (age person) && (age person) < ub  
 	return $ (name person)|]
@@ -52,7 +64,7 @@ getAge1 = [|\name' -> do
 	return $ (age person)|]
 
 
-getAge' name' = fromTest [|do
+getAge' name' = fromTestUntyped [|do
 	person <- people
 	guard $ (name person) == name' 
 	return $ (age person)|]
@@ -142,7 +154,22 @@ a = 30
 b:: Int
 b = 40
 
-rangeTT b= [||$$rangeT ($$((unsafeTExpCoerce $ lift a))) b||]
-rangeTT2= [||$$rangeT $$(liftLinq a) $$(liftLinq b)||]
+rangeTT b = [||$$rangeT ($$((unsafeTExpCoerce $ lift a))) b||]
+rangeTT2 = [||$$rangeT $$(liftLinq a) $$(liftLinq b)||]
 
-rangeTTT a b=  [||$$rangeT a b||]
+rangeTTT a b =  [||$$rangeT a b||]
+
+data NameAge = NameAge String Int deriving (Eq, Show)
+data Name' = Name' String deriving (Eq, Show)
+
+expert = [||do
+	d <- departments test
+	guard $ null (do
+		e <- employees test
+		guard $ (ddpt d) == (edpt e) && null (do
+			t <- tasks test
+			guard $ (emp e) == (temp t)
+			return []))
+	return $ (ddpt d)||]
+
+

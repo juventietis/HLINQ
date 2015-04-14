@@ -50,3 +50,6 @@ toList valsIO = do
 	vals <- valsIO
 	let conv = map (\x -> fromSql $ x!! 0) vals
 	return conv
+
+toList' vals = fmap (map (\x -> fromSql $ x!! 0)) vals
+toList'' vals =  fmap (map (fromSql.head)) vals

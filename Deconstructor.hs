@@ -7,30 +7,6 @@ import Data.List(partition)
 import Constructor
 import System.IO.Unsafe
 
-
-deconstruct' :: Either String Exp -> [Stmt]
-deconstruct' (Right (DoE exps)) = exps
-
-deconstruct :: Exp -> [Stmt]
-deconstruct (DoE exps) = exps
-
-hsToSqlStr :: Stmt -> String
-hsToSqlStr (NoBindS exp) = noBindS' exp
-hsToSqlStr (BindS pat exp) = bindS' pat exp
-
-hsToSql :: Stmt -> String
-hsToSql (NoBindS exp) = noBindS' exp
-hsToSql (BindS pat exp) = bindS' pat exp
-
-toString :: [Stmt] -> [String]
-toString = map hsToSqlStr
-
-noBindS' :: Exp -> String
-noBindS' (InfixE (Just (VarE fun)) (|$|) (Just exp))
- | fun == 'guard = show $ guardExp exp
- | fun == 'return = show $ returnExp exp -- Where clause is built from this part
-noBindS' exp = show exp
-
 hsBoolOp :: [Name]
 hsBoolOp = ['(&&),'(||), 'not]
 
@@ -41,7 +17,10 @@ guardExp :: Exp -> ValueExpr
 guardExp (InfixE (Just exp1) (VarE fun) (Just exp2)) 
  | fun `elem` hsBinOp = BinOp (appExp exp1) (hsBinOpToSQL fun) (appExp exp2)
  | fun `elem` hsBoolOp = BinOp (guardExp exp1) (hsBoolOpToSQL fun) (guardExp exp2)
- | otherwise = error $ "Unknown guard exp = " ++ (nameBase fun) 
+ | otherwise = error $ "Unknown guard exp = " ++ (nameBase fun)
+guardExp (AppE (VarE fun) exp)
+ | fun == 'null = Exists (expQToSQL (returnQ exp))
+ | otherwise = error $ show exp
 
 hsBoolOpToSQL :: Name -> String
 hsBoolOpToSQL name
@@ -66,6 +45,7 @@ appExp (LitE (IntegerL val)) = NumLit val
 appExp (LitE (StringL val)) = StringLit val
 appExp (ListE str@[LitE (CharL x)]) = StringLit $ rebuildString str
 appExp (ListE str@((LitE (CharL x)):xs)) = StringLit $ rebuildString str
+appExp (ListE []) = error $ "[]"
 appExp exp = error $ "Appexp err: " ++ show exp
 
 
@@ -111,9 +91,13 @@ symbolicReduceInnerLoop [x] = symbolicReduce x []
 symbolicReduceInnerLoop (x:xs) = symbolicReduce x xs
 
 symbolicReduce :: Stmt -> [Stmt] -> [Stmt]
-symbolicReduce allExp@(BindS pat (DoE (grd@(NoBindS (InfixE (Just (VarE fun)) (|$|) (Just exp))) : xs))) rem
+symbolicReduce allExp@(BindS pat (DoE ((NoBindS (InfixE (Just (VarE fun)) (|$|) (Just exp))) : xs))) rem
   | fun == 'guard = forIf allExp ++ symbolicReduceInnerLoop rem
   | fun == 'return = forYld allExp rem
+symbolicReduce allExp@(BindS pat ((DoE (NoBindS (AppE (VarE fun) (exp)) : xs)))) rem
+  | fun == 'guard = forIf allExp ++ symbolicReduceInnerLoop rem
+  | fun == 'return = forYld allExp rem
+
 symbolicReduce allExp@(BindS pat exp@(DoE _)) rem = forFor allExp ++ symbolicReduceInnerLoop rem
 symbolicReduce xs rem = [xs] ++ symbolicReduceInnerLoop rem
 
@@ -215,13 +199,6 @@ substituteStatements (NoBindS exp) subst = NoBindS $ (substitute exp subst)
 substituteStatements (BindS pat exp) subst = BindS pat $ substitute exp subst
 substituteStatements (LetS decs) subst = LetS $ map (\(ValD pat (NormalB exp) decls) -> (ValD pat (NormalB (substitute exp subst)) decls)) decs
 
-expQToString :: ExpQ -> [String]
-expQToString = unsafePerformIO . runQ . fmap expToString
-
-expToString :: Exp -> [String]
-expToString (DoE stmt) = toString stmt
-expToString _ = error "Unimplemented syntax"
-
 expQToSQL :: ExpQ -> QueryExpr
 expQToSQL exp = unsafePerformIO . runQ . fmap expToSQL $ normalised where 
 					normalised = normalise exp
@@ -277,6 +254,9 @@ guardStatement :: Exp -> [ValueExpr]
 guardStatement (InfixE (Just (VarE fun)) (|$|) (Just exp))
  | fun == 'guard = [guardExp exp] -- Where clause is built from this part
  | fun == 'return = []
+guardStatement (AppE (VarE fun) (exp))
+ | fun == 'return = []
+ | fun == 'guard = [guardExp exp]
 guardStatement exp = error $ "Guard statement error: " ++  show exp
 
 returnStatements :: [Stmt] -> [ValueExpr]
@@ -289,6 +269,9 @@ returnStatement :: Exp -> [ValueExpr]
 returnStatement (InfixE (Just (VarE fun)) (|$|) (Just exp))
  | fun == 'return = returnExp exp -- Where clause is built from this part
  | fun == 'guard = []
+returnStatement (AppE (VarE fun) (exp))
+ | fun == 'return = returnExp exp
+ | fun == 'guard = []
 returnStatement exp = error $ "Error in return statement: \n" ++  show exp
 
 
@@ -299,8 +282,6 @@ noBindStatement (InfixE (Just (VarE fun)) (|$|) (Just exp))
 noBindStatement (DoE exps) = undefined
 noBindStatement exp = error $ "NoBinds error: " ++ show exp
 
-printExp :: ExpQ -> IO()
-printExp exp = mapM_ putStrLn (expQToString exp)
 
 isEmpty :: [a] -> Bool
 isEmpty [] = True
@@ -344,7 +325,6 @@ recordsToTables (((DIden field tableAlias)): ys) table@(TRAlias (TRSimple ref) s
 fieldsToTables :: [ValueExpr] -> [TableRef] -> [(String, [String])]
 fieldsToTables records tables = do
 									table@(TRAlias (TRSimple ref) s) <- tables
-									--runIO $ print s
 									let fields = recordsToTables records table
 									guard $ not $ isEmpty fields
 									return (ref, fields) 
