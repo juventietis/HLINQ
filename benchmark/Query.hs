@@ -8,17 +8,15 @@ import Database.HaskellDB.HDBRec
 import Database.HaskellDB.HDBC
 import Database.HaskellDB.Sql.SQLite
 import Database.HaskellDB.HDBC.SQLite3
-import Database.HaskellDB.HDBC.PostgreSQL
 import Database.HaskellDB.Database
 import Database.HaskellDB.PrintQuery
 import Database.HDBC.Sqlite3 (connectSqlite3)
-import Database.HDBC.PostgreSQL (connectPostgreSQL)
-
---withDB :: (Database -> IO a) -> IO a
---withDB = sqliteConnect "test.db"
 
 withDB :: (Database -> IO a) -> IO a
-withDB = postgresqlConnect []
+withDB = sqliteConnect "test.db"
+
+--withDB :: (Database -> IO a) -> IO a
+--withDB = postgresqlConnect []
 
 
 simpleSelection = do
@@ -29,9 +27,6 @@ peopleSelection = do
 
 getCouples = withDB $ \db -> query db simpleSelection
 getPeople = withDB $ \db -> query db peopleSelection 
-
-
--- fun x = withDB (\db -> query db) x
 
 projectName = withDB $ \db -> query db simpleProjection
 projectNameAge = withDB $ \db -> query db simpleProjection2
@@ -44,7 +39,6 @@ simpleProjection2 = do
   people <- table T.people
   project $ F.name    << people!F.name
           # F.age << people!F.age
-
 
 restrictEdna = withDB $ \db -> query db simpleRestriction
 
@@ -70,7 +64,6 @@ differencesInner = do
 	project $ F.name << w!F.name
 			# F.age << (w!F.age .-. m!F.age)
 
-
 getAge name = withDB $ (\db -> query db (getAgeInner name)) 
 
 getAgeInner name = do
@@ -89,9 +82,7 @@ composeInner' name1 name2 = do
 	restrict $ people!F.age .>=. p!F.age .&&. people!F.age .<. p2!F.age
 	project $ F.name << people!F.name
 
-
 compose name1 name2 = withDB $ (\db -> query db (composeInner name1 name2))  
-
 
 composeInner name1 name2 = do
 	age1 <- getAgeInner name1

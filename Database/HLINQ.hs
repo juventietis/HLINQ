@@ -1,3 +1,3 @@
-module Database.HLINQ where
+module Database.HLINQ(module Database.HLINQ.Info) where
 
 import Database.HLINQ.Info

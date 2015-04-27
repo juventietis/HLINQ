@@ -72,20 +72,6 @@ getAge'' = [|\name' -> do
 	guard $ (name person) == name' 
 	return $ (age person)|]
 
--- compose'' = [|\name1 name2 -> do
--- 	age1 <- (\name' -> do
--- 		person <- people
--- 		guard $ (name person) == name' 
--- 		return $ (age person)) name1
--- 	age2 <- (\name' -> do
--- 		person <- people
--- 		guard $ (name person) == name' 
--- 		return $ (age person)) name2
--- 	(\lb ub -> do
--- 	person <- people
--- 	guard $ lb <= (age person) && (age person) < ub  
--- 	return $ (name person)) age1 age2|]
-
 compose = [|\name1 name2 -> do
 	age1 <- $(getAge) name1
 	age2 <- $(getAge) name2
@@ -110,13 +96,6 @@ differencesT = [||do
 	w <- people test
 	guard $ ((her c) == (name w)) && ((him c) == (name m)) && ((age w) > (age m))
 	return $ ((name w), (age w) - (age m))||]
-
--- differencesTErr = [||do
--- 	c <- couples test
--- 	m <- people test
--- 	w <- people test
--- 	guard $ ((her c) == (age w)) && ((him c) == (name m)) && ((age w) > (age m))
--- 	return $ ((name w), (age w) - (age m))||]	
 
 satisfies = [|\p -> do person <- people; guard $ (p (age person)); return $ (name person)|]
 

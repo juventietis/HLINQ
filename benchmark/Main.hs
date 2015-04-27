@@ -50,12 +50,7 @@ main = defaultMain [
 							   bench "HLINQ to Tuples" $ nfIO $ ((toTuple toTup2 $ fromTest [||$$differencesT||]):: IO [(String, Int)]),
 							   bench "HaskellDB" $ nfIO $ HDB.differences
 							 ],
-		--bgroup "Differences" [ bench "HLINQ" $ whnfIO $ fromTestUntyped [|$(differences)|],
-		--					   bench "HLINQ to Tuples" $ nfIO $ ((toTuple toTup2 $ fromTestUntyped [|$differences|]):: IO [(String, Int)]),
-		--					   bench "THLINQ" $ whnfIO $ fromTest [||$$(differencesT)||],
-		--					   bench "THLINQ to Tuples" $ nfIO $ ((toTuple toTup2 $ fromTest [||$$differencesT||]):: IO [(String, Int)]),
-		--					   bench "HaskellDB" $ nfIO $ HDB.differences
-		--					 ],
+
 	    bgroup "GetAge" [ bench "HLINQ Drew" $ whnfIO $ fromTest [||$$(getAgeT) "Drew"||],
 	    				  bench "HLINQ Drew to list" $ nfIO $ ((toList $ fromTest [||$$(getAgeT) "Drew"||]):: IO [(Int)]),
 	    				  bench "HLINQ unknown name " $ whnfIO $ fromTest [||$$(getAgeT) "Ethan"||], 
@@ -64,13 +59,6 @@ main = defaultMain [
 	    				  bench "HaskellDB unknown name " $ whnfIO $ (HDB.getAge "Ethan")
 	    				],
 
-	    --bgroup "GetAge" [ bench "LINQ Drew" $ whnfIO $ fromTestUntyped [|$(getAge) "Drew"|],
-	    --				  bench "LINQ unknown name " $ whnfIO $ fromTestUntyped [|$(getAge) "Ethan"|],
-	    --				  bench "TLINQ Drew" $ whnfIO $ fromTest [||$$(getAgeT) "Drew"||],
-	    --				  bench "TLINQ unknown name " $ whnfIO $ fromTest [||$$(getAgeT) "Ethan"||], 
-	    --				  bench "HaskellDB Drew" $ whnfIO $ (HDB.getAge "Drew"), 
-	    --				  bench "HaskellDB unknown name " $ whnfIO $ (HDB.getAge "Ethan")
-	    --				],
 	    bgroup "Compose" [ bench "HLINQ Edna Drew" $ whnfIO $ fromTest [||$$(composeT) "Edna" "Drew"||],
 	    				   bench "HLINQ Edna Drew to tuples" $ nfIO $ ((toList $ fromTest [||$$(composeT) "Edna" "Drew"||]):: IO [(String)]),
 	    				   bench "HLINQ Edna Drew to tuples fmap" $ nfIO $ ((toList' $ fromTest [||$$(composeT) "Edna" "Drew"||]):: IO [(String)]),
@@ -80,19 +68,9 @@ main = defaultMain [
 	    				   bench "HLINQ Bob Tim to tuples fmap" $ nfIO $ ((toList' $ fromTest [||$$(composeT) "Bob" "Tim"||]):: IO [(String)]),
 	    				   bench "HLINQ Bob Tim to tuples fmap'" $ nfIO $ ((toList'' $ fromTest [||$$(composeT) "Bob" "Tim"||]):: IO [(String)]),
 	    				   bench "HaskellDB Edna Drew" $ nfIO $ HDB.compose "Edna" "Drew",
-	    				   bench "HaskellDB Bob Tim" $ whnfIO $ HDB.compose "Bob" "Tim"],
+	    				   bench "HaskellDB Bob Tim" $ whnfIO $ HDB.compose "Bob" "Tim"
+	    				   ],
 
-	    --bgroup "Compose" [ bench "LINQ Edna Drew" $ whnfIO $ fromTestUntyped [|$(compose) "Edna" "Drew"|],
-	    --				   bench "LINQ Edna Drew to tuples" $ nfIO $ ((toList $ fromTestUntyped [|$(compose) "Edna" "Drew"|]):: IO [(String)]),
-	    --				   bench "LINQ John Tom" $ whnfIO $ fromTestUntyped [|$(compose) "Jon" "Tom"|],
-	    --				   bench "TLINQ Edna Drew" $ whnfIO $ fromTest [||$$(composeT) "Edna" "Drew"||],
-	    --				   bench "TLINQ Edna Drew to tuples" $ nfIO $ ((toList $ fromTest [||$$(composeT) "Edna" "Drew"||]):: IO [(String)]),
-	    --				   bench "TLINQ John Tom" $ whnfIO $ fromTest [||$$(composeT) "Jon" "Tom"||],
-	    --				   bench "HaskellDB Edna Drew" $ nfIO $ HDB.compose "Edna" "Drew",
-	    --				   bench "HaskellDB John Tom" $ whnfIO $ HDB.compose "Jon" "Tom"
-	    --				   --bench "HaskellDB' Edna Drew" $ nfIO $ HDB.compose' "Edna" "Drew",
-	    --				   --bench "HaskellDB' John Tom" $ whnfIO $ HDB.compose' "Jon" "Tom"
-	    --				 ],
 	    bgroup "Satisfies" [ bench "LINQ" $ whnfIO $ fromTestUntyped [|$satisfies $pre|],
 	    					 bench "TLINQ" $ whnfIO $ fromTest [||$$satisfiesT $$preT||]
 	    				   ],
@@ -104,11 +82,5 @@ main = defaultMain [
 	    						 bench "compose normalisation" $ whnfIO $ printNormalised [||$$(composeT) "Edna" "Drew"||],
 	    						 bench "differences normalisation" $ whnfIO $ printNormalised [||$$differencesT||]
 	    					   ]
-	    --bgroup "Normalisation" [ bench "range" $ whnf  normalise [|$range 30 40|],
-	    --						 bench "differences" $ whnf  normalise [|$differences|],
-	    --						 bench "getAge" $ whnf  normalise [|$getAge "Drew"|],
-	    --						 bench "compose" $ whnf  normalise [|$compose "Edna" "Drew"|],
-	    --						 bench "satisfies" $ whnf normalise [|$satisfies $pre|]
-	    --					   ]
 	]
 
