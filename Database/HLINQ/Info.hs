@@ -1,13 +1,13 @@
 {-# LANGUAGE TemplateHaskell #-}
-module Info (createDB, DBInfo (DBInfo), info, checkDbHash', checkDbHash, expQToSQL, tExpQToSQL) where
+module Database.HLINQ.Info (createDB, DBInfo (DBInfo), info, checkDbHash', checkDbHash, expQToSQL, tExpQToSQL) where
 
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 import Data.Hashable
 import System.IO.Unsafe
-import Deconstructor(expQToSQL, tExpQToSQL)
-import Info.Internal
-import Utilities
+import Database.HLINQ.Deconstructor(expQToSQL, tExpQToSQL)
+import Database.HLINQ.Info.Internal
+import Database.HLINQ.Utilities
 
 
 {-#NOINLINE createDB #-} 

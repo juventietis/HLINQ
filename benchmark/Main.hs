@@ -6,8 +6,8 @@ import Criterion.Main
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 import Examples
-import Deconstructor
-import Utilities
+import Database.HLINQ.Deconstructor
+import Database.HLINQ.Utilities
 import System.IO.Unsafe
 import qualified Query as HDB
 

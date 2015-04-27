@@ -2,7 +2,7 @@
 module InfoInternalTest where
 import Test.Tasty
 import Test.Tasty.HUnit
-import Info.Internal
+import Database.HLINQ.Info.Internal
 import Database.HDBC
 import Database.HDBC.Sqlite3
 
@@ -16,7 +16,7 @@ convTypeTests = [testCase "Converting SqlCharT to Haskell type" ((convType SqlCh
 
 getDbInfoTest = [testCase "getDBInfo" (do
 	info <- getDBInfo "test.db" 
-	info @?= [("couples",[("her",SqlVarCharT),("him",SqlVarCharT)]),("people",[("name",SqlVarCharT),("age",SqlIntegerT)])])]
+	info @?= [("couples",[("her",SqlVarCharT),("him",SqlVarCharT)]), ("people",[("name",SqlVarCharT),("age",SqlIntegerT)]) ])]
 
 infoInternalUnitTests :: TestTree
 infoInternalUnitTests = testGroup "Info.Internal unit tests" (convTypeTests ++ getDbInfoTest)

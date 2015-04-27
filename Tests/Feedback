@@ -1,0 +1,55 @@
+Inline code samples.
+Layout!!!
+Introduction:
+Some boasting about results. Why convert to Haskell.
+Cite LINQ.
+
+Literature:
+Chapter -- section
+Query avalanche problem needs definition.
+Describe Haskell
+bolding and italics.
+Define a thing when first introducing it.
+More explanation in general
+Look over the quoting and what is happenning.
+
+Problem analysis:
+More on the proof single query from Cheney paper. Just the result is enough.
+More explicit that the same normalisation are used and therefore the validity of the results.
+Single line explanations of the normalisation rules.
+SQL injection not connected at the moment.
+
+Development:
+HLINQ in the introduction. Maybe in the name as well.
+More explanation on the Q monad.
+"terrible misunderstanding" -- ambiguity
+mention the reason why postgresql used genetic.
+
+Results:
+Add comments to the code.
+Add a bit of summary of front, so that the reader would not feel lost.
+More description of query plan and definition.
+Better summarisation of the query.
+Add discussion of sizes of queries.
+
+Bibliography fixes.
+
+
+
+
+
+
+
+
+
+More contextualisation.
+
+
+
+
+
+
+
+
+
+

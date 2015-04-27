@@ -1,10 +1,10 @@
 {-# LANGUAGE TemplateHaskell #-}
-module Deconstructor where
+module Database.HLINQ.Deconstructor where
 import Control.Monad
 import Language.Haskell.TH.Syntax
 import Language.Haskell.TH
 import Data.List(partition)
-import Constructor
+import Database.HLINQ.Constructor
 import System.IO.Unsafe
 
 hsBoolOp :: [Name]
@@ -17,10 +17,11 @@ guardExp :: Exp -> ValueExpr
 guardExp (InfixE (Just exp1) (VarE fun) (Just exp2)) 
  | fun `elem` hsBinOp = BinOp (appExp exp1) (hsBinOpToSQL fun) (appExp exp2)
  | fun `elem` hsBoolOp = BinOp (guardExp exp1) (hsBoolOpToSQL fun) (guardExp exp2)
- | otherwise = error $ "Unknown guard exp = " ++ (nameBase fun)
+ | otherwise = error $ "Unsupported operator = " ++ (nameBase fun)
 guardExp (AppE (VarE fun) exp)
- | fun == 'null = Exists (expQToSQL (returnQ exp))
+ | fun == 'null = NotExists (expQToSQL (returnQ exp))
  | otherwise = error $ show exp
+
 
 hsBoolOpToSQL :: Name -> String
 hsBoolOpToSQL name
@@ -45,7 +46,10 @@ appExp (LitE (IntegerL val)) = NumLit val
 appExp (LitE (StringL val)) = StringLit val
 appExp (ListE str@[LitE (CharL x)]) = StringLit $ rebuildString str
 appExp (ListE str@((LitE (CharL x)):xs)) = StringLit $ rebuildString str
-appExp (ListE []) = error $ "[]"
+appExp (AppE (VarE fun) (TupE exps))
+ | fun == 'fst = appExp $ head exps
+ | fun == 'snd = appExp $ exps !! 1
+ | otherwise = error "Only one and two tuples supported"
 appExp exp = error $ "Appexp err: " ++ show exp
 
 
@@ -64,21 +68,15 @@ normalise :: ExpQ -> ExpQ
 normalise exprQ = do 
 	expr <- exprQ
 	let reduced = betaReduce expr
-	-- runIO $ print ("Original expr: " ++ show expr)
-	-- runIO $ print ("Reduced expr: " ++ show reduced)
-	-- let reduced' = betaReduce reduced
-	-- runIO $ print $ "Original"
-	-- runIO $ print $ show expr
-	-- runIO $ print $ "Result"
-	-- runIO $ print $ reduced
-	let reduced2 = reduce reduced
+	let reduced2 = reduce  reduced
 	let reduced3 = DoE $ flatten $ (\(DoE stmts) -> stmts) reduced2
 	let reducedAdHoc = DoE $ adHocReduction $ (\(DoE stmts) -> stmts) reduced3
-
 	return reducedAdHoc
 
 reduce :: Exp -> Exp
 reduce (DoE expr) = DoE $ symbolicReduceLoop expr
+reduce (VarE exp) = error $ "The queries must be spliced into the quotes, add '$$' in front of " ++ show (nameBase exp)
+reduce _ = error "Only do expression syntax is supported"
 
 symbolicReduceLoop :: [Stmt] -> [Stmt]
 symbolicReduceLoop stmts 
@@ -96,8 +94,11 @@ symbolicReduce allExp@(BindS pat (DoE ((NoBindS (InfixE (Just (VarE fun)) (|$|) 
   | fun == 'return = forYld allExp rem
 symbolicReduce allExp@(BindS pat ((DoE (NoBindS (AppE (VarE fun) (exp)) : xs)))) rem
   | fun == 'guard = forIf allExp ++ symbolicReduceInnerLoop rem
+  | fun == 'guard && exp == (ConE 'True) = symbolicReduceInnerLoop rem
+  | fun == 'guard && exp == (ConE 'False) = []
   | fun == 'return = forYld allExp rem
 
+symbolicReduce allExp@(BindS pat (ListE [])) rem = []
 symbolicReduce allExp@(BindS pat exp@(DoE _)) rem = forFor allExp ++ symbolicReduceInnerLoop rem
 symbolicReduce xs rem = [xs] ++ symbolicReduceInnerLoop rem
 
@@ -113,6 +114,9 @@ forIf (BindS pat (DoE (grd@(NoBindS (InfixE (Just (VarE fun)) (|$|) (Just exp)))
 forYld :: Stmt -> [Stmt] -> [Stmt]
 forYld (BindS (VarP pat) (DoE (rtn@(NoBindS (InfixE (Just (VarE fun)) (|$|) (Just exp))) : xs))) rem
   | fun == 'return = map (\x -> substituteStatements x (Subst (VarE pat) exp)) rem
+forYld (BindS (VarP pat) (DoE (rtn@(NoBindS (AppE (VarE fun)  exp)) : xs))) rem
+  | fun == 'return = map (\x -> substituteStatements x (Subst (VarE pat) exp)) rem
+forYld exp rem = error $ "forYld: " ++ (show exp)
 
 
 
@@ -138,8 +142,15 @@ isGuard _ = False
 joinGuards :: [Stmt] -> [Stmt]
 joinGuards [] = []
 joinGuards [x] = [x]
-joinGuards [(NoBindS (InfixE fun@_ dollar@_ (Just exp1))),(NoBindS (InfixE _ _ (Just exp2)))] = [NoBindS (InfixE fun dollar (Just (InfixE (Just exp1) (VarE '(&&)) (Just exp2))))]
-joinGuards ((NoBindS (InfixE fun@_ dollar@_ (Just exp1))):(NoBindS (InfixE _ _ (Just exp2))):xs) = joinGuards $ [NoBindS (InfixE fun dollar (Just (InfixE (Just exp1) (VarE '(&&)) (Just exp2))))] ++ xs
+joinGuards [guard1, guard2] = [NoBindS (InfixE (Just (VarE 'guard)) (VarE '($)) (Just (InfixE (Just (extractFromGuard guard1)) (VarE '(&&)) (Just (extractFromGuard guard2)))))]
+joinGuards (guard1 : guard2 : xs) = joinGuards $ [NoBindS (InfixE (Just (VarE 'guard)) (VarE '($)) (Just (InfixE (Just (extractFromGuard guard1)) (VarE '(&&)) (Just (extractFromGuard guard2)))))] ++ xs
+
+--joinGuards [(NoBindS (InfixE fun@_ dollar@_ (Just exp1))),(NoBindS (InfixE _ _ (Just exp2)))] = [NoBindS (InfixE fun dollar (Just (InfixE (Just exp1) (VarE '(&&)) (Just exp2))))]
+--joinGuards ((NoBindS (InfixE fun@_ dollar@_ (Just exp1))):(NoBindS (InfixE _ _ (Just exp2))):xs) = joinGuards $ [NoBindS (InfixE fun dollar (Just (InfixE (Just exp1) (VarE '(&&)) (Just exp2))))] ++ xs
+
+extractFromGuard :: Stmt -> Exp
+extractFromGuard (NoBindS (InfixE _ _ (Just exp))) = exp
+extractFromGuard (NoBindS (AppE _ exp)) = exp
 
 -- Applies beta reduction to the expression, meant to resolve lambda functions inside the expression.
 betaReduce :: Exp -> Exp
@@ -182,6 +193,7 @@ substitute (LamE pat exp) subst = LamE pat (substitute exp subst)
 substitute (InfixE (Just exp1) midExp@(_) (Just exp2)) subst = InfixE (Just $ substitute exp1 subst) midExp (Just $ betaReduce $ substitute exp2 subst)
 substitute var@(VarE _) subst = substituteExp var subst
 substitute exp@(LitE _) subst = exp
+substitute exp@(TupE exps) subst = TupE $ map (\x -> substitute x subst) exps
 substitute exp _  = error $ "\nUnsupported syntax: " ++ (show exp)
 
 suitableForReduction :: Exp -> Bool

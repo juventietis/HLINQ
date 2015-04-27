@@ -1,15 +1,13 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Examples where
-import Info
-import Utilities
+import Database.HLINQ.Info
+import Database.HLINQ.Utilities
 import Control.Monad
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 import Data.Hashable
-import Data.List(null)
 
-import Temp
--- createDB "test.db" "test"
+createDB "test.db" "test"
 
 --main = do
 --	-- checkDBConsistency
@@ -19,7 +17,7 @@ import Temp
 --			let results = fromTest [||$$differencesT||]
 --			print results
 --		(Left err) -> do error err
---createDB "" ""
+
 
 range'' lb ub = [|do
 	person <- people
@@ -161,15 +159,4 @@ rangeTTT a b =  [||$$rangeT a b||]
 
 data NameAge = NameAge String Int deriving (Eq, Show)
 data Name' = Name' String deriving (Eq, Show)
-
-expert = [||do
-	d <- departments test
-	guard $ null (do
-		e <- employees test
-		guard $ (ddpt d) == (edpt e) && null (do
-			t <- tasks test
-			guard $ (emp e) == (temp t)
-			return []))
-	return $ (ddpt d)||]
-
 

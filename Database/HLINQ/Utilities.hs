@@ -1,12 +1,12 @@
 {-# LANGUAGE TemplateHaskell#-}
-module Utilities where
+module Database.HLINQ.Utilities where
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 import Data.Char (toUpper, toLower)
 import Database.HDBC
 import Data.Convertible
 
-liftLinq  a = unsafeTExpCoerce $ lift a
+liftLinq a = unsafeTExpCoerce $ lift a
 
 
 

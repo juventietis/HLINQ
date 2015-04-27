@@ -1,19 +1,18 @@
 {-# LANGUAGE TemplateHaskell#-}
-module Info.Internal where
+module Database.HLINQ.Info.Internal where
 
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 import Database.HDBC.Sqlite3 (connectSqlite3)
-import Database.HDBC.PostgreSQL (connectPostgreSQL)
 import Database.HDBC
 import Control.Monad	
 import Data.List (intercalate)
 import Data.Maybe
 import Data.Int
 import Data.Hashable
-import Deconstructor
-import Constructor
-import Utilities
+import Database.HLINQ.Deconstructor
+import Database.HLINQ.Constructor
+import Database.HLINQ.Utilities
 
 
 data DBInfo = DBInfo {info :: [(String, [(String, String)])]} deriving(Eq, Show)
@@ -21,8 +20,7 @@ data DBInfo = DBInfo {info :: [(String, [(String, String)])]} deriving(Eq, Show)
 -- Connects to the database, extracts and summaries table descriptions.
 getDBInfo :: String -> IO [(String, [(String, SqlTypeId)])]
 getDBInfo dbPath = do
-	--conn <- connectSqlite3 dbPath
-	conn <- connectPostgreSQL ""
+	conn <- connectSqlite3 dbPath
 	tables <- getTables conn
 	descriptions <- mapM (describeTable conn) tables
 	disconnect conn
@@ -163,8 +161,7 @@ convTypeString typ = showName $ convType typ
 defFromDBUntyped :: String -> String -> Q Dec
 defFromDBUntyped dbName  dbPath = return $ FunD (mkName $ "from" ++ (toTitleCase dbName) ++ "Untyped") [Clause [VarP query] (NormalB (DoE [connS, letS, letValS, statS, execS, bindResS, discS, returnS])) []] where
 	-- Connects to the database
-	connS = BindS (VarP $ mkName "conn") (AppE (VarE 'connectPostgreSQL) (LitE (StringL "")))
-	--connS = BindS (VarP $ mkName "conn") (AppE (VarE 'connectSqlite3) (LitE (StringL dbPath)))
+	connS = BindS (VarP $ mkName "conn") (AppE (VarE 'connectSqlite3) (LitE (StringL dbPath)))
 	-- Converts the query from type TExpQ to QueryExpr, which can be easily converted to a string
 	letS = LetS [ValD (VarP $ mkName "convQuery") (NormalB (AppE (VarE 'expQToSQL) (VarE query))) []]
 	-- Knocks out values from the statement so that they could be used in the preparation of the statement
@@ -184,8 +181,7 @@ defFromDBUntyped dbName  dbPath = return $ FunD (mkName $ "from" ++ (toTitleCase
 defFromDB :: String -> String -> Q Dec
 defFromDB dbName  dbPath = return $ FunD (mkName $ "from" ++ (toTitleCase dbName)) [Clause [VarP query] (NormalB (DoE [connS, letS, letValS, statS, execS, bindResS, discS, returnS])) []] where
 	-- Connects to the database
-	connS = BindS (VarP $ mkName "conn") (AppE (VarE 'connectPostgreSQL) (LitE (StringL "")))
-	--connS = BindS (VarP $ mkName "conn") (AppE (VarE 'connectSqlite3) (LitE (StringL dbPath)))
+	connS = BindS (VarP $ mkName "conn") (AppE (VarE 'connectSqlite3) (LitE (StringL dbPath)))
 	-- Converts the query from type TExpQ to QueryExpr, which can be easily converted to a string
 	letS = LetS [ValD (VarP $ mkName "convQuery") (NormalB (AppE (VarE 'expQToSQL) (AppE (VarE 'unTypeQ) (VarE query)))) []]
 	-- Knocks out values from the statement so that they could be used in the preparation of the statement

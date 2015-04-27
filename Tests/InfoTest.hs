@@ -5,9 +5,9 @@ import Test.Tasty.HUnit
 import Database.HDBC
 import Database.HDBC.Sqlite3
 import Data.Int
-import Info
-import Info.Internal
-import Utilities
+import Database.HLINQ.Info
+import Database.HLINQ.Info.Internal
+import Database.HLINQ.Utilities
 import FillDB(fill, addTestTable, removeTestTable)
 
 
@@ -34,7 +34,11 @@ checkDBHashTest = [
 	res @?= (Left "Database Structure has changed since last compilation, please recompile."))]
 
 
-createDBTests = [testCase "Creating a db DB" (dbInfo @?= DBInfo [("couples",[("her","GHC.Base.String"),("him","GHC.Base.String")]),("people",[("name","GHC.Base.String"),("age","GHC.Types.Int")])])]
+
+
+createDBTests = [testCase "Creating a db DB" (dbInfo @?= DBInfo [("couples",[("her","GHC.Base.String"),("him","GHC.Base.String")]), ("people",[("name","GHC.Base.String"),("age","GHC.Types.Int")])])]
+
+
 
 
 --mkTableTypeTests = [testCase "Making a table type from name" ((mkTableType "change" SqlFloatT) @?= ())]
